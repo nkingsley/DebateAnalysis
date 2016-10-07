@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head><link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"></head>
+<style>
+body {
+  font: 16px 'Open Sans', sans-serif;
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.x.axis path {
+  display: none;
+}
+.d3-tip {
+  line-height: 1;
+  font: 16px sans-serif;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+</style>
+<body>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="https://d3js.org/d3-queue.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+var margin = {top: 40, right: 20, bottom: 70, left: 90},
+    width = 1000 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+var x0 = d3.scale.ordinal()
+    .rangeRoundBands([0, width], 0);
+var x1 = d3.scale.ordinal();
+var y = d3.scale.linear()
+    .range([height, 0]);
+var color = d3.scale.ordinal()
+    .range(["#2465b5", "#D12C1D", "#79008f"]);
+var lightColor = d3.scale.ordinal()
+    .range(["#4a8bdb", "#f75243", "#9f26b5"]);
+var xAxis = d3.svg.axis()
+    .scale(x0)
+    .orient("bottom");
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(d3.format());
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.queue()
+  .defer(d3.csv, "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/mtld.csv")
+  .defer(d3.csv, "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/candidates.csv")
+  .await(main);
+
+function main(error, data, candidates) {
+  if (error) throw error;
+
+  var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([-8, 0])
+    .html(function(d) {
+      return candidates[d.i][d.name] + " " + d.value.toFixed(4);
+    })
+  svg.call(tip);
+
+  var partyNames = d3.keys(data[0]).filter(function(key) { return key !== "Year" && key !== "winner"; });
+  data.forEach(function(d, i) {
+    d.party = partyNames.map(function(name) { return { i: i, name: name, value: +d[name], winner: d.winner }; }).filter(function(d) { return d.value !== 0; });
+  });
+  x0.domain(data.map(function(d) { return d.Year; }));
+  x1.domain(partyNames).rangeRoundBands([0, x0.rangeBand()]);
+  y.domain([0, d3.max(data, function(d) { return d3.max(d.party, function(d) { return d.value; }); })]);
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .text("Repetition")
+      .attr("x", width/2)
+      .attr("y", -height - 10)
+      .attr("font-size", "40px")
+      .style("text-anchor", "middle");
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -65)
+      .attr("x", height/-2 + margin.top)
+      .style("text-anchor", "end")
+      .style("font-size", 20)
+      .text("Repetition");
+  var year = svg.selectAll(".year")
+      .data(data)
+    .enter().append("g")
+      .attr("class", "year")
+      .attr("transform", function(d) {
+        var offset = d.party.length%2 == 0 ? x1.rangeBand()/2 : 0;
+        return "translate(" + (x0(d.Year)+offset) + ",0)";
+      });
+  year.selectAll("rect")
+      .data(function(d) { return d.party; })
+    .enter().append("rect")
+      .attr("class", "rectangles")
+      .attr("width", x1.rangeBand())
+      .attr("x", function(d) { return x1(d.name); })
+      .attr("y", function(d) { return y(d.value); })
+      .attr("height", function(d) { return height - y(d.value); })
+      .style("fill", function(d) { lightColor(d.name); return color(d.name); })
+      .on('mouseover', function(d) {
+        tip.show(d, this);
+        d3.select(this).style("fill", lightColor(d.name));
+      })
+      .on("mouseout", function(d) {
+        tip.hide(d, this);
+        d3.select(this).style("fill", color(d.name));
+      });
+  year.selectAll("rectangles")
+      .data(function(d) { return d.party; })
+    .enter().append("svg:image").filter( function(d) { return d.name == d.winner })
+      .attr("xlink:href", "../assets/star.png")
+      .attr("width", 25)
+      .attr("height", 25)
+      .attr("x", function(d) { return x1(d.name) + 2; })
+      .attr("y", height - 35);
+  var legend = svg.selectAll(".legend")
+      .data(partyNames.slice())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(" + i * 130 + ",0)"; });
+  legend.append("rect")
+      .attr("x", 252)
+      .attr("y", height + 40)
+      .attr("width", 25)
+      .attr("height", 25)
+      .style("fill", color);
+  legend.append("text")
+      .attr("x", 250)
+      .attr("y", height + 53)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d; });
+  svg.append("rect")
+      .attr("x", 644)
+      .attr("y", height + 40)
+      .attr("width", 25)
+      .attr("height", 25)
+      .style("fill", "#606060");
+  svg.append("svg:image")
+      .attr("xlink:href", "../assets/star.png")
+      .attr("x", 645)
+      .attr("y", height + 41)
+      .attr("width", 23)
+      .attr("height", 23);
+  svg.append("text")
+      .attr("x", 642)
+      .attr("y", height + 53)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text("Won Election");
+};
+</script>
