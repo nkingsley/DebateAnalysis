@@ -72,8 +72,8 @@ var svg = d3.select("body").append("svg")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 d3.queue()
-  .defer(d3.csv, "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/subjectivity.csv")
-  .defer(d3.csv, "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/candidates.csv")
+  .defer(d3.csv, "http://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/subjectivity.csv")
+  .defer(d3.csv, "http://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/candidates.csv")
   .await(main);
 
 function main(error, data, candidates) {
