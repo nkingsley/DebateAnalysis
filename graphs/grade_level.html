@@ -58,6 +58,7 @@ var color = d3.scale.ordinal()
     .range(["#2465b5", "#D12C1D", "#79008f"]);
 var lightColor = d3.scale.ordinal()
     .range(["#4a8bdb", "#f75243", "#9f26b5"]);
+var starPath = "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/assets/star.png"
 var xAxis = d3.svg.axis()
     .scale(x0)
     .orient("bottom");
@@ -142,7 +143,7 @@ function main(error, data, candidates) {
   year.selectAll("rectangles")
       .data(function(d) { return d.party; })
     .enter().append("svg:image").filter( function(d) { return d.name == d.winner })
-      .attr("xlink:href", "../assets/star.png")
+      .attr("xlink:href", starPath)
       .attr("width", 25)
       .attr("height", 25)
       .attr("x", function(d) { return x1(d.name) + 2; })
@@ -171,7 +172,7 @@ function main(error, data, candidates) {
       .attr("height", 25)
       .style("fill", "#606060");
   svg.append("svg:image")
-      .attr("xlink:href", "../assets/star.png")
+      .attr("xlink:href", starPath)
       .attr("x", 645)
       .attr("y", height + 41)
       .attr("width", 23)
