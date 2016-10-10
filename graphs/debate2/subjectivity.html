@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head><link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"></head>
+<style>
+body {
+  font: 20px 'Open Sans', sans-serif;
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.y.axis path {
+  display: none;
+}
+.grid .tick {
+  stroke: lightgrey;
+  opacity: 0.7;
+}
+.grid path {
+  stroke-width: 0;
+}
+.d3-tip {
+  line-height: 1;
+  font: 16px sans-serif;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+var margin = {top: 45, right: 20, bottom: 30, left: 100},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+var x0 = d3.scale.ordinal()
+    .rangeRoundBands([0, width], 0.35);
+var x1 = d3.scale.ordinal();
+var y = d3.scale.linear()
+    .range([height, 0]);
+var xAxis = d3.svg.axis()
+    .scale(x0)
+    .orient("bottom");
+var yAxis = d3.svg.axis()
+    .ticks(4)
+    .scale(y)
+    .orient("left");
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-8, 0])
+  .html(function(d) { return d.name + " " + d.value.toFixed(4); })
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+var colors = ["#E91D0E", "#2465b5"];
+var lightColors = ["#FF3D3E", "#4a8bdb"];
+var images = ["https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/assets/trumpHead.png",
+              "https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/assets/clintonHead.png"];
+
+svg.call(tip);
+d3.csv("https://raw.githubusercontent.com/Scripted/DebateAnalysis/master/data/debate2/subjectivity.csv", type, function(error, data) {
+  var debateNames = d3.keys(data[0]).filter(function(key) { return key !== "speaker" && key !== "value"; });
+  data.forEach(function(d, i) {
+    d.image = images[i];
+    d.debate = debateNames.map(function(name) { return { i: i, name: name, value: +d[name] }; });
+  });
+  x0.domain(data.map(function(d) { return d.speaker; }));
+  x1.domain(debateNames).rangeRoundBands([0, x0.rangeBand()]);
+  y.domain([0.3, d3.max(data, function(d) { return d3.max(d.debate, function(d) { return d.value; }); })]);
+  svg.append("g")
+      .attr("class", "grid")
+      .call(make_y_axis()
+        .tickSize(-width, 0, 0)
+        .tickFormat("")
+      );
+
+  var candidate = svg.selectAll(".candidate")
+      .data(data)
+    .enter().append("g")
+      .attr("class", "candidate")
+      .attr("transform", function(d) {
+        return "translate(" + x0(d.speaker) + ",0)";
+      });
+  candidate.selectAll("rect")
+      .data(function(d) { return d.debate; })
+    .enter().append("rect")
+      .attr("class", "rectangles")
+      .attr("width", x1.rangeBand())
+      .attr("x", function(d) { return x1(d.name); })
+      .attr("y", function(d) { return y(d.value); })
+      .attr("height", function(d) { return height - y(d.value); })
+      .style("stroke", "#FFF")
+      .style("stroke-width", 1)
+      .style("fill", function(d,i) { return colors[d.i]; })
+      .on('mouseover', function(d) {
+        tip.show(d, this);
+        expandImage(d3.select(d.imageSelection));
+        d3.select(this).style("fill", lightColors[d.i]);
+      })
+      .on("mouseout", function(d) {
+        tip.hide(d, this);
+        shrinkImage(d3.select(d.imageSelection));
+        d3.select(this).style("fill", colors[d.i]);
+      });
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .text("Subjectivity")
+      .attr("x", width/2)
+      .attr("y", -height - 15)
+      .attr("font-size", "40px")
+      .style("text-anchor", "middle");
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -65)
+      .attr("x", height/-2 + margin.top)
+      .style("text-anchor", "end")
+      .text("Subjectivity");
+  svg.select(".x.axis").selectAll(".tick")
+    .data(data)
+    .append("svg:image")
+    .attr("xlink:href", function (d) {
+      imgSel = this;
+      d.debate.forEach(function(deb) {
+        deb.imageSelection = imgSel;
+      });
+      return d.image })
+    .attr("width", 120)
+    .attr("height", 120)
+    .attr("x", -60)
+    .attr("y", -120)
+    .on('mouseover', function(d) {
+      expandImage(d3.select(this));
+    })
+    .on('mouseout', function(d) {
+      shrinkImage(d3.select(this));
+    });
+});
+function type(d) {
+  d.value = +d.value;
+  return d;
+}
+function make_y_axis() {
+  return d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .ticks(4)
+}
+function expandImage(selection) {
+  selection.transition().duration(400)
+    .attr("width", 140).attr("height", 140).attr("x", -70).attr("y", -140)
+}
+function shrinkImage(selection) {
+  selection.transition().duration(400)
+    .attr("width", 120).attr("height", 120).attr("x", -60).attr("y", -120)
+}
+</script>
