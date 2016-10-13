@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<head><link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"></head>
 <style>
+
+body {
+  font: 16px 'Open Sans', sans-serif;
+}
 
 .axis--x path {
   display: none;
@@ -13,15 +18,18 @@
 }
 
 </style>
-<svg width="960" height="500"></svg>
+<body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.7/d3.min.js"></script>
 <script>
+var margin = {top: 60, right: 80, bottom: 30, left: 60},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
 
-var svg = d3.select("svg"),
-    margin = {top: 60, right: 80, bottom: 30, left: 60},
-    width = svg.attr("width") - margin.left - margin.right,
-    height = svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+var svg = d3.select("body").append("svg")
+  .attr("preserveAspectRatio", "xMinYMin meet")
+  .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
+
+var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 var parseTime = d3.timeParse("%Y");
 
@@ -73,7 +81,7 @@ d3.csv("https://gist.githubusercontent.com/rfauver/c38941e2e4278851d87a83476ea76
     .append("text")
       .attr("transform", "rotate(-90)")
       .attr("y", -50)
-      .attr("x", -180)
+      .attr("x", -150)
       .attr("dy", "0.71em")
       .attr("fill", "#000")
       .attr("font-size", "18px")
@@ -90,7 +98,7 @@ d3.csv("https://gist.githubusercontent.com/rfauver/c38941e2e4278851d87a83476ea76
         d.textSelection = this;
 
         return "translate(" + (x(d.value.date)-70) + "," + i*20 + ")"; })
-      .style("font", "12px sans-serif")
+      .style("font-size", "12px")
       .attr("id", function(d,i) { return "id" + i; })
       .text(function(d) { return d.id; });
 
