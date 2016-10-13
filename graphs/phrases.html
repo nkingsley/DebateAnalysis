@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.axis--x path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+</style>
+<svg width="960" height="500"></svg>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.7/d3.min.js"></script>
+<script>
+
+var svg = d3.select("svg"),
+    margin = {top: 60, right: 80, bottom: 30, left: 60},
+    width = svg.attr("width") - margin.left - margin.right,
+    height = svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var parseTime = d3.timeParse("%Y");
+
+var x = d3.scaleTime().range([0, width]),
+    y = d3.scaleLinear().range([height, 0]),
+    z = d3.scaleOrdinal(d3.schemeCategory10);
+
+var line = d3.line()
+    .curve(d3.curveMonotoneX)
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.frequency); });
+
+d3.csv("https://gist.githubusercontent.com/rfauver/c38941e2e4278851d87a83476ea767a3/raw/99d4b53ec46d42be61c908094d53a7b876273182/data.csv", type, function(error, data) {
+  if (error) throw error;
+
+  var topics = data.columns.slice(1).map(function(id) {
+    return {
+      id: id,
+      values: data.map(function(d) {
+        return {date: d.date, frequency: d[id]};
+      })
+    };
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(topics, function(c) { return d3.min(c.values, function(d) { return d.frequency; }); }),
+    d3.max(topics, function(c) { return d3.max(c.values, function(d) { return d.frequency; }); })
+  ]);
+
+  z.domain(topics.map(function(c) { return c.id; }));
+
+  g.append("g")
+      .attr("class", "axis axis--x")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x).ticks(d3.timeYear.every(4)))
+    .append("text")
+      .attr("y", -height - 20)
+      .attr("x", width/2)
+      .attr("fill", "#000")
+      .attr("font-size", "35px")
+      .style("text-anchor", "middle")
+      .text("Most Commonly Used Historical Phrases");
+
+  g.append("g")
+      .attr("class", "axis axis--y")
+      .call(d3.axisLeft(y))
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -50)
+      .attr("x", -180)
+      .attr("dy", "0.71em")
+      .attr("fill", "#000")
+      .attr("font-size", "18px")
+      .text("Occurrences");
+
+  var topic = g.selectAll(".topic")
+    .data(topics)
+    .enter().append("g")
+      .attr("class", "topic");
+
+  topic.append("text")
+      .datum(function(d) { return {id: d.id, value: d.values[d.values.length - 1]}; })
+      .attr("transform", function(d,i) {
+        d.textSelection = this;
+
+        return "translate(" + (x(d.value.date)-70) + "," + i*20 + ")"; })
+      .style("font", "12px sans-serif")
+      .attr("id", function(d,i) { return "id" + i; })
+      .text(function(d) { return d.id; });
+
+  topic.append("path")
+      .attr("class", "line")
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", function(d) { return z(d.id); })
+      .on("mouseover", function(d,i) {
+        d3.select("#id" + i).style("font-weight", "bold").style("font-size", "14px");
+        d3.select(this).style("stroke-width",'6px');
+      })
+      .on("mouseout", function(d,i) {
+        d3.select("#id" + i).style("font-weight", "normal").style("font-size", "12px");
+        d3.select(this).style("stroke-width",'2px');
+      });
+
+  topic.append("circle")
+      .datum(function(d) { return {id: d.id, value: d.values[d.values.length - 1]}; })
+      .attr("transform", function(d,i) { return "translate(" + (x(d.value.date)-70) + "," + i*20 + ")"; })
+      .attr("cx", -8)
+      .attr("cy", -4)
+      .attr("r", 6)
+      .style("fill", function(d) { return z(d.id); });
+});
+
+function type(d, _, columns) {
+  d.date = parseTime(d.date);
+  for (var i = 1, n = columns.length, c; i < n; ++i) d[c = columns[i]] = +d[c];
+  return d;
+}
+
+</script>
